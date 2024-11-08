@@ -27,9 +27,11 @@ class Quote extends Model
         'tent_size',
         'delivery_on_elevator',
         'loading_dock_instructions',
+        'seo_metrics'
     ];
 
     protected $casts = [
+        'seo_metrics' => 'array',
         'has_products' => 'boolean',
     ];
 
