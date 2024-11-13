@@ -29,8 +29,8 @@
             width: fit-content;
             margin: 0px auto;
             display: flex;
-            align-items: center;
-            min-height: calc(100% - 1rem);
+                align-items: center;
+                min-height: calc(100% - 1rem);
         }
         
         .modal-title {
@@ -54,21 +54,13 @@
 @stop
 
 @php
+    $showMetricsColumn = session()->get('superAdminCode') == env('SUPER_ADMIN_CODE');
 
     function fetchQueryParam($metrics)
     {
-        $queryParams = array_diff_key($metrics, ['source_referrer' => true, 'ip' => true, 'anycast' => true, 'hostname' => true, 'bogon' => true, 'city' => true, 'region' => true, 'country' => true, 'loc' => true, 'postal' => true, 'timezone' => true, 'org' => true, 'readme' => true]);
+        $queryParams = array_diff_key($metrics, ['source_referrer' => true, 'entry_url' => true,  'ip' => true, 'anycast' => true, 'hostname' => true, 'bogon' => true, 'city' => true, 'region' => true, 'country' => true, 'loc' => true, 'postal' => true, 'timezone' => true, 'org' => true, 'readme' => true]);
         if(count($queryParams) == 1 && isset($queryParams['source'])) return [];
         return $queryParams;
-    }
-
-    function attachQueryParams($queryParams, $referrerDomain)
-    {
-        $formattedPairs = array_map(function($key, $value) {
-            return $key . '=' . $value . '&';
-        }, array_keys($queryParams), $queryParams);
-
-        return $referrerDomain . '?' . rtrim(implode('', $formattedPairs), '&');
     }
 
     function fetchLocationDetails($metrics) 
@@ -94,6 +86,12 @@
             ],
             'Bing' => [
                 'urls' => ['www.bing.com']
+            ],
+            'DuckDuckGo' => [
+                'urls' => ['duckduckgo.com']
+            ],
+            'Yahoo' => [
+                'urls' => ['nz.search.yahoo.com']
             ],
         ];
     }
@@ -152,7 +150,7 @@
 
             $adLeadType = checkDomainForAdParams($queryParams, $lead ? getLeadTypes()[$lead]['possible_matches'] : []) ? $lead : 'Unknown';
 
-            $leadType = ($queryParams['utm_campaign'] ?? '') === 'local' && $lead == 'Google' ? 'Google My Business' : $adLeadType . ' Ads';
+            $leadType = ($queryParams['utm_campaign'] ?? '') === 'local' && $lead == 'Google' ? 'GMB' : $adLeadType . ' Ads';
 
             return formatOutput($leadType, $location, $referrerDomain, $adParam);
         }
@@ -183,7 +181,9 @@
             <th> Company Name </th>
             <th> Event Date </th>
             <th> Quote Date </th>
-            <th> Metrics </th>
+            @if ($showMetricsColumn)
+                <th> Metrics </th>
+            @endif
             <th> Actions </th>
         </tr>
     </thead>
@@ -197,76 +197,85 @@
                 <td> {{ $quote->company_name }} </td>
                 <td> {{ $quote->event_at }} </td>
                 <td> {{ $quote->created_at }} </td>
-                <td>
-                    @if ($quote->seo_metrics)
-                    <div style="text-align: start;">
-                        <a data-toggle="modal" data-target="#modal_{{ $key }}" style="font-size: 14px;">
-                            {{-- {{ $quote->seo_metrics['keyword'] ?? $quote->seo_metrics['city'] ?? array_values($quote->seo_metrics)[0] }} --}}
-                            {!! formatLabel($quote->seo_metrics) !!}
-                        </a>
-                        @else NULL
-                        @endif
-                    </div>
+                @if ($showMetricsColumn)
+                    <td>
+                        @if ($quote->seo_metrics)
+                        <div style="text-align: start;">
+                            <a data-toggle="modal" data-target="#modal_{{ $key }}" style="font-size: 14px;">
+                                {{-- {{ $quote->seo_metrics['keyword'] ?? $quote->seo_metrics['city'] ?? array_values($quote->seo_metrics)[0] }} --}}
+                                {!! formatLabel($quote->seo_metrics) !!}
+                            </a>
+                            @else NULL
+                            @endif
+                        </div>
 
-                    <div class="modal fade" id="modal_{{ $key }}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-modal="true"
-                    role="dialog" >
-                        <div class="modal-dialog rental-service rounded bg-transparent" role="document">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" style="align-self:center;">Quotes</h5>
-                                    <button type="button" class="close-button" data-dismiss="modal" aria-label="Close" style="align-self: center;">
-                                      <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <div class="modal-body" style="max-height: 60vh; overflow-y: scroll;">
-                                    @if ($quote->seo_metrics)
+                        <div class="modal fade" id="modal_{{ $key }}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-modal="true"
+                        role="dialog" >
+                            <div class="modal-dialog rental-service rounded bg-transparent" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" style="align-self:center;">Quotes</h5>
+                                        <button type="button" class="close-button" data-dismiss="modal" aria-label="Close" style="align-self: center;">
+                                        <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body" style="max-height: 60vh; overflow-y: scroll;">
+                                        @if ($quote->seo_metrics)
 
-                                        @php
-                                            $locationDetail = fetchLocationDetails($quote->seo_metrics);
-                                            $queryParam = fetchQueryParam($quote->seo_metrics);
-                                        @endphp
+                                            @php
+                                                $locationDetail = fetchLocationDetails($quote->seo_metrics);
+                                                $queryParam = fetchQueryParam($quote->seo_metrics);
+                                                $isSourceReferrer = isset($quote->seo_metrics['source_referrer']) || ( ( count($queryParam) == 0) && isset($quote->seo_metrics['source']));
+                                                $referrerDomain = $isSourceReferrer ? ( $quote->seo_metrics['source_referrer'] ?? $quote->seo_metrics['source'] ) : '';
+                                                $fullUrl = $quote->seo_metrics['entry_url'] ?? 'NULL';
+                                            @endphp
 
-                                        @if (count($locationDetail))
-                                            <strong><p class="mb-0 text-center">Location Details</p></strong>
-                                            <hr class="mt-1">
+                                            @if (count($locationDetail))
+                                                <strong><p class="mb-0 text-center">Location Details</p></strong>
+                                                <hr class="mt-1">
+                                            @endif
+                                            @foreach ($locationDetail as $key => $location)
+                                                @if (isset($quote->seo_metrics[$key]))
+                                                    <p style="display: flex;"><strong>{{ ucfirst($key) }}:  &nbsp;</strong> {{ $location }}</p>
+                                                @endif    
+                                            @endforeach
+
+                                            @if ($isSourceReferrer)
+                                                <hr class="mt-1">
+                                                <strong><p class="mb-0 text-center">Referrer Details</p></strong>
+                                                <hr class="mt-1">
+                                                <div style="display: flex;margin-bottom: 20px;"><strong>Referrer Domain: &nbsp;</strong>
+                                                    <a style="max-inline-size: 140ch; word-break: break-all; text-align: start;" href="{{ $referrerDomain }}" target="_blank">
+                                                        {{ $referrerDomain }}
+                                                    </a> 
+                                                </div>
+                                                <div style="display: flex; margin-bottom: 20px;"><strong>Landing URL: &nbsp;</strong>
+                                                    @if($fullUrl !== 'NULL')
+                                                        <a style="max-inline-size: 140ch; word-break: break-all; text-align: start;" href="{{ $fullUrl }}" target="_blank">
+                                                            {{ $fullUrl }}
+                                                        </a>
+                                                    @else
+                                                        NULL
+                                                    @endif
+                                                </div>
+                                                <hr class="mt-1">
+                                            @endif
+
+                                            @if (count($queryParam))
+                                                <strong><p class="mb-0 text-center">Details Received in URL</p></strong>
+                                                <hr class="mt-1">
+                                            @endif
+                                            @foreach ($queryParam as $key => $value)
+                                                <p style="display: flex;"><strong>{{ ucfirst($key) }}:  &nbsp;</strong> {{ $value }}</p>
+                                            @endforeach
+
                                         @endif
-                                        @foreach ($locationDetail as $key => $location)
-                                            @if (isset($quote->seo_metrics[$key]))
-                                                <p style="display: flex;"><strong>{{ ucfirst($key) }}:  &nbsp;</strong> {{ $location }}</p>
-                                            @endif    
-                                        @endforeach
-
-                                        @if (isset($quote->seo_metrics['source_referrer']) || ( ( count($queryParam) == 0) && isset($quote->seo_metrics['source']) ) )
-                                            <hr class="mt-1">
-                                            <strong><p class="mb-0 text-center">Referrer Details</p></strong>
-                                            <hr class="mt-1">
-                                            <div style="display: flex;"><strong>Referrer Domain: &nbsp;&nbsp;</strong>
-                                                <p>
-                                                    {{  $quote->seo_metrics['source_referrer'] }}
-                                                </p> 
-                                            </div>
-                                            <div style="display: flex;"><strong>Referrer Url: &nbsp;&nbsp;</strong>
-                                                <p style="width: 140ch; word-wrap: break-word; white-space: normal;">
-                                                    {{ attachQueryParams($queryParam, $quote->seo_metrics['source_referrer']) }}
-                                                </p> 
-                                            </div>
-                                            <hr class="mt-1">
-                                        @endif
-
-                                        @if (count($queryParam))
-                                            <strong><p class="mb-0 text-center">Details Received in URL</p></strong>
-                                            <hr class="mt-1">
-                                        @endif
-                                        @foreach ($queryParam as $key => $value)
-                                            <p style="display: flex;"><strong>{{ ucfirst($key) }}:  &nbsp;</strong> {{ $value }}</p>
-                                        @endforeach
-
-                                    @endif
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </td>
+                    </td>
+                @endif
                 <td>
                 	@if($quote->has_products)
                         Requested For Quote
