@@ -11,6 +11,9 @@
 	    <div class="col-md-12">
 	        <!-- BEGIN LISTING TABLE-->
 	        <div class="portlet light ">
+				<div style="margin:20px;">
+					@yield('portlet_header')
+				</div>
 	            <div class="portlet-title">
 	                <div class="caption font-dark">
 	                    <span class="caption-subject bold uppercase">@yield('subject')</span>
@@ -19,6 +22,7 @@
 	                <div class="tools"> </div>
 	            </div>
 	            <div class="portlet-body">
+					@yield('portlet_body')
 	                <table class="table table-striped table-bordered table-hover" id="category_index">
 	                    @yield('table-content')
 	                </table>

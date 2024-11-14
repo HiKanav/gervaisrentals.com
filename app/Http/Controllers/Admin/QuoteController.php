@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
-use Illuminate\Http\Request;
-
 use Excel;
 
-use App\Http\Requests;
+use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
 use App\Admin\Quote;
@@ -18,10 +16,32 @@ class QuoteController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         $quotes = Quote::orderBy('created_at', 'desc')->paginate(15);
-        return view('admin.quote.index', compact('quotes'));
+
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $hasDateParams = $request->has('start_date') || $request->has('end_date');
+
+        $query  = Quote::query();
+
+        if ($startDate && $endDate ) $query->whereBetween('created_at', [$startDate, $endDate]);
+    
+        $quotes = $query->orderBy('created_at', 'desc')->with('products')->paginate(10);
+
+        $dates = Quote::select('created_at')->get()->map(function($date) {
+            return  $date->created_at->format('Y-m-d H:i:s');
+        });
+
+        return view('admin.quote.index', [
+            'quotes' => $quotes,
+            'dates' => $dates,
+            'hasDateParams' => $hasDateParams,
+            'startDate' => $startDate,
+            'endDate' => $endDate
+        ]);
+
     }
 
     /**

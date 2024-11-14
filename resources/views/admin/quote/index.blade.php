@@ -159,6 +159,17 @@
     }
 @endphp
 
+@if ($showMetricsColumn)
+    @section('portlet_header')
+        <div style="display: flex;justify-content:space-between;">
+            <div  id="ordersPast6Months" style="height: 370px; width: 100%;max-width: 50%;"></div>
+            <div  id="ordersPast60Days" style="height: 370px; width: 100%;max-width: 50%;"></div>
+            <span id="timeToRender"></span>
+        </div>
+    @stop
+@endif
+
+
 @section('breadcrumbs')
     <li>
         <span><a href="{{action('Admin\QuoteController@index')}}">Quotes</a></span>
@@ -170,6 +181,31 @@
 @stop
 
 @section('subject') Quotes @stop
+
+@section('portlet_body')
+    <div id="date_filter" style="display: none;">
+        {!! Form::open(['method' => 'GET', 'route' => 'admin.quote.index', 'id' => 'form']) !!}
+        <div style="display: flex;justify-content:start;gap: 30px;">
+            <div class="form-group">
+                <label for="start_date">From: </label>
+                {!! Html::form_field_with_icon('calendar', Form::date('start_date', old('start_date', $startDate), ['class' => 'form-control', 'placeholder' => 'Start Date', 'id' => 'start_date', 'required' => 'required'])) !!}
+            </div>
+
+            <div class="form-group" >
+                <label for="end_date">To: </label>
+                {!! Html::form_field_with_icon('calendar', Form::date('end_date', old('end_date', $endDate), ['class' => 'form-control', 'placeholder' => 'End Date', 'id' => 'end_date', 'required' => 'required'])) !!}
+            </div>
+
+            <div style="align-self: center; margin-bottom: 6px;">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                @if($hasDateParams)
+                    <a id="clear" class="small text-primary ml-2 cursor-pointer" style="align-self: center;margin-left: 15px;">Clear filter</a>
+                @endif    
+            </div>
+        </div>
+        {!! Form::close() !!}
+    </div>
+@stop
 
 @section('table-content')
     <thead>
@@ -196,7 +232,7 @@
                 <td> {{ $quote->phone }} </td>
                 <td> {{ $quote->company_name }} </td>
                 <td> {{ $quote->event_at }} </td>
-                <td> {{ $quote->created_at }} </td>
+                <td class="dates"> {{ $quote->created_at }} </td>
                 @if ($showMetricsColumn)
                     <td>
                         @if ($quote->seo_metrics)
@@ -289,11 +325,264 @@
             </tr>
         @endforeach
     </tbody>
+@stop
+
+@section('tfoot')
     <tfoot>
-        {{ $quotes->links() }}
+        <div id="paginate">
+            {{ $quotes->appends(request()->query())->links() }}
+        </div>
     </tfoot>
 @stop
 
 @section('page-level-js')
+    <script src="https://canvasjs.com/assets/script/jquery.canvasjs.min.js"></script>
+
+    <script>
+
+        var test = JSON.parse('{!! json_encode($showMetricsColumn) !!}');
+
+            $('#form').on('submit', function(event) {
+                event.preventDefault();
+
+                $('<input>', {
+                    type: 'hidden',
+                    id: 'timezone',
+                    name: 'timezone',
+                    value: Intl.DateTimeFormat().resolvedOptions().timeZone
+                }).appendTo('form');
+
+                this.submit();
+            })
+
+        function preserveScrollPosition() {
+            var scrollPos = sessionStorage.getItem('scrollPos');
+            if (scrollPos) {
+                $(window).scrollTop(scrollPos);
+            }
+
+            $(document).on('click', '.pagination a, button', function() {
+                sessionStorage.setItem('scrollPos', $(window).scrollTop());
+            });
+        }
+
+        $( document ).ready(function() {
+
+            preserveScrollPosition()
+
+            var table = $('.table').DataTable({searching: false, paging: false, info: false});
+
+            $('#list_filter').parent().prev().append($('#date_filter'))
+            $('#date_filter').show()
+
+            $.fn.dataTable.ext.search.push(
+                function(settings, data, dataIndex) {
+                    var min = new Date($('#min').val());
+                    var max = new Date($('#max').val());
+                    var date = new Date(data[5]);
+
+                    if ((isNaN(min) && isNaN(max)) ||
+                        (isNaN(min) && date <= max) ||
+                        (min <= date && isNaN(max)) ||
+                        (min <= date && date <= max)) {
+                        return true;
+                    }
+                    return false;
+                }
+            );
+
+            $('#clear').click(function() {
+                $('#start_date').val('')
+                $('#end_date').val('')
+                $('#clear').css('visibility', 'hidden')
+                
+                window.history.pushState({}, document.title, window.location.pathname);
+
+                $.ajax({
+                    url: $('#form').attr('action'),
+                    method: 'GET',
+                    data: $('#filter-form').serialize(),
+                    success: function(response) {
+                        const dateFilter = $('#date_filter');
+                        table.destroy();
+                        $('#category_index').html($(response).find('#category_index').html());
+                        $('#paginate').html($(response).find('#paginate').html());
+                        $('#category_index').DataTable({
+                            searching: false,
+                            paging: false, 
+                            info: false,
+                            drawCallback: function (settings) {
+                                $('#list_filter').parent().prev().append(dateFilter)
+                            },
+                        })
+                    }
+                });
+            });
+        });
+
+        const monthNames = {
+            '1': 'January',
+            '2': 'February',
+            '3': 'March',
+            '4': 'April',
+            '5': 'May',
+            '6': 'June',
+            '7': 'July',
+            '8': 'August',
+            '9': 'September',
+            '10': 'October',
+            '11': 'November',
+            '12': 'December'
+        };
+
+        const formatDate = (date, format = 'YYYY-M-DD') => {
+            date = new Date(date) 
+            const options = {hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
+            const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(date);
+            const partValues = parts.reduce((acc, { type, value }) => ({ ...acc, [type]: value }), {});
+            
+            return format
+                .replace('YYYY', partValues.year)
+                .replace('M', partValues.month)
+                .replace('DD', partValues.day)
+                .replace('HH', partValues.hour)
+                .replace('mm', partValues.minute)
+                .replace('ss', partValues.second);
+        };
+
+        const getShortDate = (date) => {
+            const day = date.split('-')[2]
+            const month = monthNames[date.split('-')[1]]
+            return day + ' ' + month.slice(0,3)
+        }
+
+        var dates = JSON.parse('{!! json_encode($dates) !!}');
+
+        dates = dates.map((date) => (formatDate(date + ' UTC', 'YYYY-M-DD')))
+
+        const pastDates = (dates, count) => {
+            return [
+                ...dates, 
+                ...Array.from({ length: count }, (_, i) => formatDate(new Date(new Date().setDate(new Date().getDate() - i))))
+            ]
+        }
+
+        $('.dates').each(function(index, item) {
+            const date = new Date(item.innerText + ' UTC')
+            $(item).text(formatDate(date, 'YYYY-M-DD HH:mm:ss'))
+        })
+
+        function pastDaysOrMonths(duration, type) { 
+            const today = new Date();            
+            const date = new Date(today);
+
+            if(type == 'days') return date.setDate(today.getDate() - duration)
+
+            else if(type == 'months') return today.setMonth(today.getMonth() - duration)
+            
+            else return date.setFullYear(today.getFullYear() - duration)
+        }
+
+        function groupAndFilterGraphdata(data, filterCondition, format = 'YYYY-M-DD', label = false) {
+
+                return _.chain(data)
+                    .groupBy((data) => {
+                        if(label) return data
+                        else return formatDate(data, format)
+                    })
+                    .mapValues((item, i) => {
+                        return {
+                            ...(label ? { label: item[0] } : { x: new Date(i) }),
+                            y: item.length - (format === 'YYYY-M' ? 0 : 1)
+                        };
+                    })
+                    .filter((item, i) =>  {
+                        const date = item.x ?? item.label;
+                        return new Date(date) > filterCondition
+                    })
+                    .sort((a,b)=>  {
+                        const firstItem = a.label ?? a.x;
+                        const secondItem = b.label ?? b.x;
+                        return new Date(firstItem) - new Date(secondItem);
+
+                    })
+                    .value()
+        }
+
+        var orderPast6Months = new CanvasJS.Chart("ordersPast6Months",
+            {
+                title:{
+                    text: "Orders of Last 24 Months"
+                },
+                dataPointMaxWidth: 80,
+                toolTip: {
+                    shared: true,
+                    contentFormatter: function (e) {
+                        return new Date(e.entries[0].dataPoint.x).toLocaleString('default', { month: 'long' }) + ': ' + e.entries[0].dataPoint.y
+                    }
+                },
+
+                axisX:{
+                    title: "timeline",
+                    labelAutoFit: true,
+                    interval: 1,
+                    intervalType: "month",
+                    labelFormatter: function (e) {
+                        return CanvasJS.formatDate( e.value, "MMM");
+                    },
+                },
+                axisY: {
+                    title: "Orders"
+                },
+                data: [
+                    {        
+                        type: "column",
+                        dataPoints: groupAndFilterGraphdata(dates,  pastDaysOrMonths(24, 'months'), 'YYYY-M'),
+                        
+                    }
+                ]
+            }
+        );
+
+        var ordersPast60Days = new CanvasJS.Chart("ordersPast60Days",
+            {
+                title:{
+                    text: "Orders of Last 120 days"
+                },
+                dataPointMaxWidth: 20,
+
+                axisX:{
+                    title: "timeline",
+                    labelAutoFit: true,
+                    interval: 0,
+                    labelFormatter: function(e) {
+                        return CanvasJS.formatDate(e.label, "MMM DD")
+                    }
+
+                },
+                toolTip: {
+                    shared: true,
+                    contentFormatter: function (e) {
+                       return getShortDate(e.entries[0].dataPoint.label) + ": " + e.entries[0].dataPoint.y
+                    }
+                },
+
+                axisY: {
+                    title: "Orders",
+                    gridThickness: 1, 
+                },
+                data: [
+                    {        
+                        type: "column",
+                        dataPoints: groupAndFilterGraphdata(pastDates(dates, 120), pastDaysOrMonths(120, 'days'), 'YYYY-M-DD', true)
+                    }
+                ]
+            }
+        );
+
+        orderPast6Months.render();
+        ordersPast60Days.render();
+    </script>
+
 	{{-- <script src={{asset("default/assets/pages/scripts/table-datatables-buttons.js")}} type="text/javascript"></script> --}}
 @stop
