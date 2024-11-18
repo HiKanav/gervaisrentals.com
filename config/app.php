@@ -211,5 +211,6 @@ return [
         'Html' => Collective\Html\HtmlFacade::class,
         'Recaptcha' => Greggilbert\Recaptcha\Facades\Recaptcha::class,
         'Excel' => Maatwebsite\Excel\Facades\Excel::class,
+        'Metrics' => App\Helpers\MetricsHelper::class,
     ]
 ];

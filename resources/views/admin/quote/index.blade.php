@@ -56,114 +56,14 @@
 @php
     $showMetricsColumn = session()->get('superAdminCode') == env('SUPER_ADMIN_CODE');
 
-    function fetchQueryParam($metrics)
-    {
-        $queryParams = array_diff_key($metrics, ['source_referrer' => true, 'entry_url' => true,  'ip' => true, 'anycast' => true, 'hostname' => true, 'bogon' => true, 'city' => true, 'region' => true, 'country' => true, 'loc' => true, 'postal' => true, 'timezone' => true, 'org' => true, 'readme' => true]);
-        if(count($queryParams) == 1 && isset($queryParams['source'])) return [];
-        return $queryParams;
-    }
-
-    function fetchLocationDetails($metrics) 
-    {
-        return array_intersect_key($metrics, array_flip(['ip', 'city', 'region', 'country', 'loc', 'postal', 'timezone', 'anycast', 'hostname']));
-    }
-
-    function getKeyValue($obj)
-    {
-        return (key($obj) . ': ' . substr(current($obj), 0, 25));
-    }
-
-    function getLeadTypes()
-    {
-        return [
-            'Google' => [
-                'urls' => ['www.google.com', 'syndicatedsearch.goog', 'www.google.ca'],
-                'possible_matches' => ['gclid', 'keyword']
-            ],
-            'Instagram' => [
-                'urls' => ['l.instagram.com'],
-                'possible_matches' => ['fbclid']
-            ],
-            'Bing' => [
-                'urls' => ['www.bing.com']
-            ],
-            'DuckDuckGo' => [
-                'urls' => ['duckduckgo.com']
-            ],
-            'Yahoo' => [
-                'urls' => ['nz.search.yahoo.com']
-            ],
-        ];
-    }
-
-    function getLeadType($sourceReferrer, $queryParams)
-    {
-        $leadTypes = getLeadTypes();
-
-        $domain = $sourceReferrer ? parse_url($sourceReferrer, PHP_URL_HOST) : '';
-
-        return array_reduce(array_keys($leadTypes), function($carry, $key) use ($leadTypes, $domain) {
-            return $carry ?: ((in_array($domain, $leadTypes[$key]['urls']) || in_array('www.' . $domain, $leadTypes[$key]['urls'])) ? $key : null);
-        }, null);
-
-    }
-
-    function checkDomainForAdParams($queryParams, $array = []) {
-        return count(array_filter($array, function($value, $key) use ($array, $queryParams) {
-                return isset($queryParams[$value]);
-            }, ARRAY_FILTER_USE_BOTH));
-    }
-
-    function formatOutput($leadType, $location, $referrerDomain = null, $adParam = null)
-    {
-        return collect(["Lead Type: " . $leadType, $location, ( $referrerDomain ? "Referrer: " . (substr($referrerDomain, 0, 25)) : null ), $adParam])
-            ->filter()
-            ->implode('</br>');
-    }
-
-    function formatLabel($value) 
-    {
-        $sourceReferrer = $value['source_referrer'] ?? $value['source'] ?? null;
-        
-        $locationDetails = fetchLocationDetails($value);
-
-        $location = !empty($locationDetails) ? (isset($locationDetails['city']) ? 'City: ' . $locationDetails['city'] : getKeyValue($locationDetails)) : '';
-
-        $queryParams = fetchQueryParam($value);
-
-        $domain = $sourceReferrer ? ( parse_url($sourceReferrer, PHP_URL_HOST) ?? $sourceReferrer ) : '';
-
-        $lead = getLeadType($sourceReferrer, $queryParams);
-
-        $referrerDomain = $lead ?? $sourceReferrer;
-
-        // if(count($queryParams) == 0 && isset($value['source'])) return collect(["Lead Type: Organic Lead", $location, "Referrer: " . ( substr($referrerDomain, 0, 25) ?? 'Not Captured')])->filter()->implode('</br>'); 
-
-        if (is_null($sourceReferrer) && empty($queryParams)) {
-            return formatOutput('Direct Lead', $location);
-        }
-
-        if (!empty($queryParams)) {
-            $adParam = array_key_exists('keyword', $queryParams) 
-                ? 'Keyword: ' . $value['keyword'] 
-                : getKeyValue($queryParams);
-
-            $adLeadType = checkDomainForAdParams($queryParams, $lead ? getLeadTypes()[$lead]['possible_matches'] : []) ? $lead : 'Unknown';
-
-            $leadType = ($queryParams['utm_campaign'] ?? '') === 'local' && $lead == 'Google' ? 'GMB' : $adLeadType . ' Ads';
-
-            return formatOutput($leadType, $location, $referrerDomain, $adParam);
-        }
-
-        return formatOutput('Organic Lead', $location, $referrerDomain);
-    }
 @endphp
 
 @if ($showMetricsColumn)
     @section('portlet_header')
         <div style="display: flex;justify-content:space-between;">
-            <div  id="ordersPast6Months" style="height: 370px; width: 100%;max-width: 50%;"></div>
-            <div  id="ordersPast60Days" style="height: 370px; width: 100%;max-width: 50%;"></div>
+            <div  id="ordersPast6Months" style="height: 370px; width: 100%;max-width: 33%;"></div>
+            <div  id="ordersPast60Days" style="height: 370px; width: 100%;max-width: 33%;"></div>
+            <div  id="leadTypesGraph" style="height: 370px; width: 100%;max-width: 33%;"></div>
             <span id="timeToRender"></span>
         </div>
     @stop
@@ -239,7 +139,7 @@
                         <div style="text-align: start;">
                             <a data-toggle="modal" data-target="#modal_{{ $key }}" style="font-size: 14px;">
                                 {{-- {{ $quote->seo_metrics['keyword'] ?? $quote->seo_metrics['city'] ?? array_values($quote->seo_metrics)[0] }} --}}
-                                {!! formatLabel($quote->seo_metrics) !!}
+                                {!! Metrics::formatLabel($quote->seo_metrics) !!}
                             </a>
                             @else NULL
                             @endif
@@ -259,8 +159,8 @@
                                         @if ($quote->seo_metrics)
 
                                             @php
-                                                $locationDetail = fetchLocationDetails($quote->seo_metrics);
-                                                $queryParam = fetchQueryParam($quote->seo_metrics);
+                                                $locationDetail = Metrics::fetchLocationDetails($quote->seo_metrics);
+                                                $queryParam = Metrics::fetchQueryParam($quote->seo_metrics);
                                                 $isSourceReferrer = isset($quote->seo_metrics['source_referrer']) || ( ( count($queryParam) == 0) && isset($quote->seo_metrics['source']));
                                                 $referrerDomain = $isSourceReferrer ? ( $quote->seo_metrics['source_referrer'] ?? $quote->seo_metrics['source'] ) : '';
                                                 $fullUrl = $quote->seo_metrics['entry_url'] ?? 'NULL';
@@ -340,8 +240,6 @@
 
     <script>
 
-        var test = JSON.parse('{!! json_encode($showMetricsColumn) !!}');
-
             $('#form').on('submit', function(event) {
                 event.preventDefault();
 
@@ -370,7 +268,7 @@
 
             preserveScrollPosition()
 
-            var table = $('.table').DataTable({searching: false, paging: false, info: false});
+            var table = $('.table').DataTable({searching: false, paging: false, info: false, order: [[6, 'desc']]});
 
             $('#list_filter').parent().prev().append($('#date_filter'))
             $('#date_filter').show()
@@ -411,6 +309,7 @@
                             searching: false,
                             paging: false, 
                             info: false,
+                            order: [[6, 'desc']],
                             drawCallback: function (settings) {
                                 $('#list_filter').parent().prev().append(dateFilter)
                             },
@@ -457,6 +356,7 @@
         }
 
         var dates = JSON.parse('{!! json_encode($dates) !!}');
+        var metrics = JSON.parse('{!! json_encode($metrics) !!}');
 
         dates = dates.map((date) => (formatDate(date + ' UTC', 'YYYY-M-DD')))
 
@@ -481,6 +381,16 @@
             else if(type == 'months') return today.setMonth(today.getMonth() - duration)
             
             else return date.setFullYear(today.getFullYear() - duration)
+        }
+
+        function formatMetricsData(metrics) {
+           return _.map(metrics, (value, key) => ({
+                type: "stackedColumn",
+                name: key,
+                legendText: key,
+                showInLegend: true,
+                dataPoints: groupAndFilterGraphdata(value, pastDaysOrMonths(24, 'months'), 'YYYY-M')
+            }));
         }
 
         function groupAndFilterGraphdata(data, filterCondition, format = 'YYYY-M-DD', label = false) {
@@ -518,21 +428,23 @@
                 toolTip: {
                     shared: true,
                     contentFormatter: function (e) {
-                        return new Date(e.entries[0].dataPoint.x).toLocaleString('default', { month: 'long' }) + ': ' + e.entries[0].dataPoint.y
+                        return new Date(e.entries[0].dataPoint.x).toLocaleString('default', {year: 'numeric', month: 'long' }) + ': ' + e.entries[0].dataPoint.y
                     }
                 },
 
-                axisX:{
+                axisX: {
                     title: "timeline",
+                    labelAngle: -90,
                     labelAutoFit: true,
-                    interval: 1,
+                    interval: 0,
                     intervalType: "month",
                     labelFormatter: function (e) {
                         return CanvasJS.formatDate( e.value, "MMM");
                     },
                 },
                 axisY: {
-                    title: "Orders"
+                    title: "Orders",
+                    minimum: 50,
                 },
                 data: [
                     {        
@@ -579,9 +491,59 @@
                 ]
             }
         );
+        
+        var leadTypesGraph = new CanvasJS.Chart("leadTypesGraph",
+            {
+                animationEnabled: true,
+                dataPointMaxWidth: 20,
+                title: {
+                    text: "Orders By lead Types"
+                },
+                axisX: {
+                    title: "timeline",
+                    labelAngle: -90,
+                    labelAutoFit: true,
+                    interval: 1,
+                    intervalType: "month",
+                    labelFormatter: function (e) {
+                        return CanvasJS.formatDate( e.value, "MMM");
+                    },
+                },
+                axisY: {
+                    title: "Orders",
+                    gridThickness: 1, 
+                },
+                axisY2: {
+                    title: "Timeline"
+                },
+                toolTip: {
+                    shared: true,
+                    contentFormatter: function (e) {
+                        var str = "";
+                        let header = "<strong>" + new Date(e.entries[0].dataPoint.x).toLocaleString('default', { month: 'long' }) + "</strong> <br/>"
+                        console.log(e.entries[0].dataPoint.x)
+                        for (var i = 0; i < e.entries.length; i++) {
+                            let str1 = "<span style= \"color:"+e.entries[i].dataSeries.color + "\">" + e.entries[i].dataSeries.name + "</span>: <strong>"+  e.entries[i].dataPoint.y + "</strong> <br/>" ;
+                            str = str.concat(str1);
+                        }
+
+                        return header + str;
+                    }
+                },
+                legend:{
+                    cursor:"pointer",
+                    verticalAlign: "top",
+                    horizontalAlign: "right",
+                },
+                data: formatMetricsData(metrics)
+            }
+        );
+
+
 
         orderPast6Months.render();
         ordersPast60Days.render();
+        leadTypesGraph.render();
     </script>
 
 	{{-- <script src={{asset("default/assets/pages/scripts/table-datatables-buttons.js")}} type="text/javascript"></script> --}}
