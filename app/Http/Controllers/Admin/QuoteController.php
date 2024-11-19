@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
+use Illuminate\Http\Request;
+
 use Excel;
 
-use Illuminate\Http\Request;
+use App\Http\Requests;
 use App\Helpers\MetricsHelper;
 use App\Http\Controllers\Controller;
 
@@ -19,13 +21,6 @@ class QuoteController extends Controller
      */
     public function index(Request $request)
     {
-        $leadTypeData = [
-            'GMB' => [],
-            'Ads' => [],
-            'Direct Lead' => [],
-            'Organic Lead' => [],
-        ];
-
         $quotes = Quote::orderBy('created_at', 'desc')->paginate(15);
 
         $startDate = $request->input('start_date');
@@ -38,26 +33,16 @@ class QuoteController extends Controller
     
         $quotes = $query->orderBy('created_at', 'desc')->with('products')->paginate(10);
 
-        $dates = Quote::select('created_at', 'seo_metrics', 'id')->get()->map(function($item) use (&$leadTypeData) {
-            $created_at = $item->created_at->format('Y-m-d H:i:s');
-
-            if(empty($item->seo_metrics)) return $created_at;
-
-            if(isset($item->seo_metrics['lead_type'])) {
-                if(array_key_exists($item->seo_metrics['lead_type'], $leadTypeData)) {
-                    array_push($leadTypeData[$item->seo_metrics['lead_type']], $created_at);
-                }
-            }
-            
-            return $created_at;
+        $metrics = Quote::select('created_at', 'seo_metrics')->get()->groupBy(function ($item) {
+            return $item->seo_metrics['lead_type'] ?? 'Unknown';
         });
+
 
         return view('admin.quote.index', [
             'quotes' => $quotes,
-            'dates' => $dates,
             'hasDateParams' => $hasDateParams,
             'startDate' => $startDate,
-            'metrics' => $leadTypeData,
+            'metrics' => $metrics,
             'endDate' => $endDate
         ]);
 

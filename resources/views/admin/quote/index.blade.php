@@ -55,15 +55,13 @@
 
 @php
     $showMetricsColumn = session()->get('superAdminCode') == env('SUPER_ADMIN_CODE');
-
 @endphp
 
 @if ($showMetricsColumn)
     @section('portlet_header')
         <div style="display: flex;justify-content:space-between;">
-            <div  id="ordersPast6Months" style="height: 370px; width: 100%;max-width: 33%;"></div>
-            <div  id="ordersPast60Days" style="height: 370px; width: 100%;max-width: 33%;"></div>
-            <div  id="leadTypesGraph" style="height: 370px; width: 100%;max-width: 33%;"></div>
+            <div  id="orderPast6Months" style="height: 370px; width: 100%;max-width: 50%;"></div>
+            <div  id="ordersPast60Days" style="height: 370px; width: 100%;max-width: 50%;"></div>
             <span id="timeToRender"></span>
         </div>
     @stop
@@ -355,8 +353,10 @@
             return day + ' ' + month.slice(0,3)
         }
 
-        var dates = JSON.parse('{!! json_encode($dates) !!}');
         var metrics = JSON.parse('{!! json_encode($metrics) !!}');
+        var dates = _.flatten(_.map(_.values(metrics), (group) =>_.map(group, (date) => formatDate(date.created_at + ' UTC', 'YYYY-M-DD') )))
+
+        metrics = _.mapValues(metrics, (metric)=> _.map(metric, (item) => new Date(item.created_at + ' UTC')))
 
         dates = dates.map((date) => (formatDate(date + ' UTC', 'YYYY-M-DD')))
 
@@ -419,43 +419,6 @@
                     .value()
         }
 
-        var orderPast6Months = new CanvasJS.Chart("ordersPast6Months",
-            {
-                title:{
-                    text: "Orders of Last 24 Months"
-                },
-                dataPointMaxWidth: 80,
-                toolTip: {
-                    shared: true,
-                    contentFormatter: function (e) {
-                        return new Date(e.entries[0].dataPoint.x).toLocaleString('default', {year: 'numeric', month: 'long' }) + ': ' + e.entries[0].dataPoint.y
-                    }
-                },
-
-                axisX: {
-                    title: "timeline",
-                    labelAngle: -90,
-                    labelAutoFit: true,
-                    interval: 0,
-                    intervalType: "month",
-                    labelFormatter: function (e) {
-                        return CanvasJS.formatDate( e.value, "MMM");
-                    },
-                },
-                axisY: {
-                    title: "Orders",
-                    minimum: 50,
-                },
-                data: [
-                    {        
-                        type: "column",
-                        dataPoints: groupAndFilterGraphdata(dates,  pastDaysOrMonths(24, 'months'), 'YYYY-M'),
-                        
-                    }
-                ]
-            }
-        );
-
         var ordersPast60Days = new CanvasJS.Chart("ordersPast60Days",
             {
                 title:{
@@ -492,12 +455,11 @@
             }
         );
         
-        var leadTypesGraph = new CanvasJS.Chart("leadTypesGraph",
+        var orderPast6Months = new CanvasJS.Chart("orderPast6Months",
             {
-                animationEnabled: true,
-                dataPointMaxWidth: 20,
+                dataPointMaxWidth: 50,
                 title: {
-                    text: "Orders By lead Types"
+                    text: "Orders of Last 24 Months"
                 },
                 axisX: {
                     title: "timeline",
@@ -520,14 +482,19 @@
                     shared: true,
                     contentFormatter: function (e) {
                         var str = "";
-                        let header = "<strong>" + new Date(e.entries[0].dataPoint.x).toLocaleString('default', { month: 'long' }) + "</strong> <br/>"
-                        console.log(e.entries[0].dataPoint.x)
+                        var totalString = "";
+                        var total = 0 ;
+                        let header = "<strong>" + new Date(e.entries[0].dataPoint.x).toLocaleString('default', {year: 'numeric', month: 'long' }) + "</strong> <br/>"
+                        
                         for (var i = 0; i < e.entries.length; i++) {
                             let str1 = "<span style= \"color:"+e.entries[i].dataSeries.color + "\">" + e.entries[i].dataSeries.name + "</span>: <strong>"+  e.entries[i].dataPoint.y + "</strong> <br/>" ;
+                            total = e.entries[i].dataPoint.y + total;
                             str = str.concat(str1);
                         }
 
-                        return header + str;
+                        totalString = "<span style = \"color:Tomato\">Total: </span><strong>" + total + "</strong><br/>";
+
+                        return header + str + totalString;
                     }
                 },
                 legend:{
@@ -543,7 +510,6 @@
 
         orderPast6Months.render();
         ordersPast60Days.render();
-        leadTypesGraph.render();
     </script>
 
 	{{-- <script src={{asset("default/assets/pages/scripts/table-datatables-buttons.js")}} type="text/javascript"></script> --}}
