@@ -33,6 +33,7 @@ use App\Admin\NaveedProduct;
 use App\Admin\NaveedCategoryChild;
 use App\Admin\OldProduct;
 use App\Helpers\Helper;
+use App\Helpers\MetricsHelper;
 
 class PageController extends Controller
 {
@@ -479,38 +480,48 @@ class PageController extends Controller
             // 'request_type' => 'required',
         ]);
 
+        $seoMetrics = array_merge(
+            session('metrics', []), 
+            Helper::fetchUserLocation($request->ip())
+        );
+
+        $leadType = count($seoMetrics) ? MetricsHelper::formatLabel($seoMetrics, true) : [];
+
+
         if($quote = Quote::create(
     array_merge(
-                $request->only(
-                    'name',
-                    'company_name',
-                    'email',
-                    'phone',
-                    'event_type',
-                    'event_at',
-                    'event_start',
-                    'event_end',
-                    'venue_name',
-                    'major_road_intersection',
-                    'delivery_postal_code',
-                    'no_of_guests',
-                    'message',
-                    'request_type',
-                    'last_name',
-                    'major_intersections',
-                    'city',
-                    'tent_size',
-                    'delivery_on_elevator',
-                    'loading_dock_instructions'
-                ),
-                [
-                    'seo_metrics' => array_merge(
-                        session('metrics', []), 
-                        Helper::fetchUserLocation($request->ip())
-                    )
-                ]
+                    $request->only(
+                        'name',
+                        'company_name',
+                        'email',
+                        'phone',
+                        'event_type',
+                        'event_at',
+                        'event_start',
+                        'event_end',
+                        'venue_name',
+                        'major_road_intersection',
+                        'delivery_postal_code',
+                        'no_of_guests',
+                        'message',
+                        'request_type',
+                        'last_name',
+                        'major_intersections',
+                        'city',
+                        'tent_size',
+                        'delivery_on_elevator',
+                        'loading_dock_instructions'
+                    ),
+                    [
+                        // 'seo_metrics' => array_merge(
+                        //     session('metrics', []), 
+                        //     Helper::fetchUserLocation($request->ip())
+                        // )
+                        'seo_metrics' => $seoMetrics + ['lead_type' => $leadType]
+
+                    ]
+                )
             )
-        )
         ) {
             // Clear cart data when contact us is filled
             if($request->has('contact_us')) {

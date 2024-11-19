@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
-use Illuminate\Http\Request;
-
 use Excel;
 
-use App\Http\Requests;
+use Illuminate\Http\Request;
 use App\Helpers\MetricsHelper;
 use App\Http\Controllers\Controller;
 
@@ -34,28 +32,24 @@ class QuoteController extends Controller
         $endDate = $request->input('end_date');
         $hasDateParams = $request->has('start_date') || $request->has('end_date');
 
-        $query  = Quote::query();
+        $query = Quote::query();
 
         if ($startDate && $endDate ) $query->whereBetween('created_at', [$startDate, $endDate]);
     
         $quotes = $query->orderBy('created_at', 'desc')->with('products')->paginate(10);
 
-        $dates = Quote::select('created_at', 'seo_metrics')->get()->map(function($item) use (&$leadTypeData) {
+        $dates = Quote::select('created_at', 'seo_metrics', 'id')->get()->map(function($item) use (&$leadTypeData) {
             $created_at = $item->created_at->format('Y-m-d H:i:s');
 
             if(empty($item->seo_metrics)) return $created_at;
 
-            $leadtype = MetricsHelper::formatLabel($item->seo_metrics, true);
-
-            if(count($item->seo_metrics)) {
-                if(array_key_exists($leadtype, $leadTypeData)) {
-                    array_push($leadTypeData[$leadtype], $created_at);
-                } else {
-                    array_push($leadTypeData['unknown'], $created_at);
+            if(isset($item->seo_metrics['lead_type'])) {
+                if(array_key_exists($item->seo_metrics['lead_type'], $leadTypeData)) {
+                    array_push($leadTypeData[$item->seo_metrics['lead_type']], $created_at);
                 }
             }
-
-            return  $created_at;
+            
+            return $created_at;
         });
 
         return view('admin.quote.index', [

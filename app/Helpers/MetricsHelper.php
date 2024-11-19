@@ -6,7 +6,7 @@ class MetricsHelper
 {
     public static function fetchQueryParam($metrics)
     {
-        $queryParams = array_diff_key($metrics, ['source_referrer' => true, 'entry_url' => true,  'ip' => true, 'anycast' => true, 'hostname' => true, 'bogon' => true, 'city' => true, 'region' => true, 'country' => true, 'loc' => true, 'postal' => true, 'timezone' => true, 'org' => true, 'readme' => true]);
+        $queryParams = array_diff_key($metrics, ['source_referrer' => true, 'lead_type' => true, 'entry_url' => true,  'ip' => true, 'anycast' => true, 'hostname' => true, 'bogon' => true, 'city' => true, 'region' => true, 'country' => true, 'loc' => true, 'postal' => true, 'timezone' => true, 'org' => true, 'readme' => true]);
         if(count($queryParams) == 1 && isset($queryParams['source'])) return [];
         return $queryParams;
     }
