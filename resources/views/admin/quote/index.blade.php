@@ -353,7 +353,8 @@
             return day + ' ' + month.slice(0,3)
         }
 
-        var metrics = JSON.parse('{!! json_encode($metrics) !!}');
+        var metrics = JSON.parse('{!! addslashes(json_encode($metrics)) !!}');
+        
         var dates = _.flatten(_.map(_.values(metrics), (group) =>_.map(group, (date) => formatDate(date.created_at + ' UTC', 'YYYY-M-DD') )))
 
         metrics = _.mapValues(metrics, (metric)=> _.map(metric, (item) => new Date(item.created_at + ' UTC')))

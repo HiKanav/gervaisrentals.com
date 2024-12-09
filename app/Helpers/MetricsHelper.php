@@ -13,7 +13,7 @@ class MetricsHelper
 
     public static function fetchLocationDetails($metrics) 
     {
-        return array_intersect_key($metrics, array_flip(['ip', 'city', 'region', 'country', 'loc', 'postal', 'timezone', 'anycast', 'hostname']));
+        return array_intersect_key($metrics, array_flip(['ip', 'city', 'region', 'country', 'loc', 'postal', 'timezone', 'anycast', 'hostname', 'org']));
     }
 
     public static function getKeyValue($obj)
