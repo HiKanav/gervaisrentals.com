@@ -20,7 +20,6 @@ class CreateQuotesTable extends Migration
             $table->string('company_name');
             $table->dateTime('event_at');
             $table->boolean('has_products')->default(1);
-            $table->longText('seo_metrics')->nullable();
             $table->timestamps();
         });
     }

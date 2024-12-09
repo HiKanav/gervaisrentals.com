@@ -97,9 +97,9 @@ class MetricsHelper
                 ? 'Keyword: ' . $value['keyword'] 
                 : self::getKeyValue($queryParams);
 
-            $adLeadType = self::checkDomainForAdParams($queryParams, $lead ? self::getLeadTypes()[$lead]['possible_matches'] : []) ? $lead : 'Unknown';
+            $adLeadType = self::checkDomainForAdParams($queryParams, $lead ? self::getLeadTypes()[$lead]['possible_matches'] : []) ? $lead . ' Ads' : 'Unknown';
             $isLeadGmb = ($queryParams['utm_campaign'] ?? '') === 'local' && $lead == 'Google';
-            $leadType = $isLeadGmb ? 'GMB' : $adLeadType . ' Ads';
+            $leadType = $isLeadGmb ? 'GMB' : $adLeadType;
             if($storeMetrics) {
                 return  $isLeadGmb ? 'GMB' : ($isLeadGmb !== 'Unknown' ? 'Ads' : null)  ;
             }

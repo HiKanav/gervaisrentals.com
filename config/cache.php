@@ -62,6 +62,7 @@ return [
             'driver' => 'redis',
             'connection' => 'default',
         ],
+
     ],
 
     /*
@@ -76,4 +77,5 @@ return [
     */
 
     'prefix' => 'laravel',
+
 ];

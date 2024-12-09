@@ -1,4 +1,5 @@
 <?php
+
 Route::controllers([
 	'auth'         => 'Auth\AuthController',
 	'password'     => 'Auth\PasswordController',
@@ -32,8 +33,10 @@ Route::get('test-email', function(Illuminate\Http\Request $request){
 Route::get('super-login', function(Illuminate\Http\Request $request){
 	if(!$request->has('code') || $request->code !== env('SUPER_ADMIN_CODE')) return 'Please Provide Valid Code';
 
-	session()->put( 'superAdminCode', $request->code );
+	session()->put('superAdminCode', $request->code );
+
 	\Auth::login(\App\User::find(1));
+
 	return redirect('admin/');
 });
 

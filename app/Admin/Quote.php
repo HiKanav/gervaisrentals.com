@@ -31,8 +31,8 @@ class Quote extends Model
     ];
 
     protected $casts = [
-        'seo_metrics' => 'array',
         'has_products' => 'boolean',
+        'seo_metrics' => 'array',
     ];
 
     /**

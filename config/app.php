@@ -110,8 +110,6 @@ return [
 
     'log' => env('APP_LOG', 'single'),
 
-    'log_path' => storage_path('logs/laravel.log'),
-
     /*
     |--------------------------------------------------------------------------
     | Autoloaded Service Providers
@@ -212,5 +210,6 @@ return [
         'Recaptcha' => Greggilbert\Recaptcha\Facades\Recaptcha::class,
         'Excel' => Maatwebsite\Excel\Facades\Excel::class,
         'Metrics' => App\Helpers\MetricsHelper::class,
-    ]
+    ],
+
 ];

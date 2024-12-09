@@ -20,7 +20,9 @@ class StoreAnalyticsData
 
         $referer = $request->headers->get('referer');
 
-        $source = (bool)$referer & !str_contains($referer, $request->getHost()) ? [ 'source_referrer' => $referer ] : [];
+        $source = (bool)$referer & !str_contains($referer, $request->getHost()) 
+                    ? [ 'source_referrer' => $referer, 'entry_url' => $request->fullUrl() ] 
+                    : [];
 
         $seo_metrics = array_merge($queryParameters, $source);
 
