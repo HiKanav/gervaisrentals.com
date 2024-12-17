@@ -6,14 +6,30 @@ class MetricsHelper
 {
     public static function fetchQueryParam($metrics)
     {
-        $queryParams = array_diff_key($metrics, ['source_referrer' => true, 'lead_type' => true, 'entry_url' => true,  'ip' => true, 'anycast' => true, 'hostname' => true, 'bogon' => true, 'city' => true, 'region' => true, 'country' => true, 'loc' => true, 'postal' => true, 'timezone' => true, 'org' => true, 'readme' => true]);
+        $excludeKeys = ['source_referrer', 'product_url', 'lead_type', 'entry_url', 'ip', 'anycast', 'hostname', 'bogon', 'city', 'region', 'country', 'loc', 'postal', 'timezone', 'org', 'readme'];
+
+        $queryParams = array_diff_key($metrics, array_flip($excludeKeys));
+
         if(count($queryParams) == 1 && isset($queryParams['source'])) return [];
+    
         return $queryParams;
     }
 
     public static function fetchLocationDetails($metrics) 
     {
         return array_intersect_key($metrics, array_flip(['ip', 'city', 'region', 'country', 'loc', 'postal', 'timezone', 'anycast', 'hostname', 'org']));
+    }
+
+    public static function mergeMetrics($ip)
+    {
+        $seoMetrics = array_merge(
+            session('metrics', []), 
+            Helper::fetchUserLocation($ip)
+        );
+
+        $leadType = count($seoMetrics) ? self::formatLabel($seoMetrics, true) : [];
+
+        return $seoMetrics + ['lead_type' => $leadType, 'product_url' => url()->previous()];
     }
 
     public static function getKeyValue($obj)

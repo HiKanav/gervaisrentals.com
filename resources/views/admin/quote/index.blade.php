@@ -161,30 +161,35 @@
                                                 $queryParam = Metrics::fetchQueryParam($quote->seo_metrics);
                                                 $isSourceReferrer = isset($quote->seo_metrics['source_referrer']) || ( ( count($queryParam) == 0) && isset($quote->seo_metrics['source']));
                                                 $referrerDomain = $isSourceReferrer ? ( $quote->seo_metrics['source_referrer'] ?? $quote->seo_metrics['source'] ) : '';
-                                                $fullUrl = $quote->seo_metrics['entry_url'] ?? 'NULL';
+                                                $fullUrl = array_get($quote->seo_metrics, 'entry_url');
+                                                $productUrl = array_get($quote->seo_metrics, 'product_url');
                                             @endphp
 
                                             @if (count($locationDetail))
                                                 <strong><p class="mb-0 text-center">Location Details</p></strong>
                                                 <hr class="mt-1">
                                             @endif
+
                                             @foreach ($locationDetail as $key => $location)
                                                 @if (isset($quote->seo_metrics[$key]))
                                                     <p style="display: flex;"><strong>{{ ucfirst($key) }}:  &nbsp;</strong> {{ $location }}</p>
                                                 @endif    
                                             @endforeach
 
+                                            @if ($isSourceReferrer || $productUrl) 
+                                                <hr class="mt-1">
+                                                    <strong><p class="mb-0 text-center">URL Details</p></strong>
+                                                <hr class="mt-1">
+                                            @endif
+
                                             @if ($isSourceReferrer)
-                                                <hr class="mt-1">
-                                                <strong><p class="mb-0 text-center">Referrer Details</p></strong>
-                                                <hr class="mt-1">
-                                                <div style="display: flex;margin-bottom: 20px;"><strong>Referrer Domain: &nbsp;</strong>
+                                                <div style="display: flex; margin-bottom: 20px;"><strong>Referrer Domain: &nbsp;</strong>
                                                     <a style="max-inline-size: 140ch; word-break: break-all; text-align: start;" href="{{ $referrerDomain }}" target="_blank">
                                                         {{ $referrerDomain }}
                                                     </a> 
                                                 </div>
                                                 <div style="display: flex; margin-bottom: 20px;"><strong>Landing URL: &nbsp;</strong>
-                                                    @if($fullUrl !== 'NULL')
+                                                    @if($fullUrl)
                                                         <a style="max-inline-size: 140ch; word-break: break-all; text-align: start;" href="{{ $fullUrl }}" target="_blank">
                                                             {{ $fullUrl }}
                                                         </a>
@@ -192,7 +197,14 @@
                                                         NULL
                                                     @endif
                                                 </div>
-                                                <hr class="mt-1">
+                                            @endif
+
+                                            @if($productUrl)
+                                                <div style="display: flex; margin-bottom: 20px;"><strong>Product URL: &nbsp;</strong>
+                                                    <a style="max-inline-size: 140ch; word-break: break-all; text-align: start;" href="{{ $productUrl }}" target="_blank">
+                                                        {{ $productUrl }}
+                                                    </a>
+                                                </div>
                                             @endif
 
                                             @if (count($queryParam))
@@ -354,7 +366,7 @@
         }
 
         var metrics = JSON.parse('{!! addslashes(json_encode($metrics)) !!}');
-        
+
         var dates = _.flatten(_.map(_.values(metrics), (group) =>_.map(group, (date) => formatDate(date.created_at + ' UTC', 'YYYY-M-DD') )))
 
         metrics = _.mapValues(metrics, (metric)=> _.map(metric, (item) => new Date(item.created_at + ' UTC')))

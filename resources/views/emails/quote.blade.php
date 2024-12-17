@@ -538,13 +538,25 @@
                                             </p>
 
                                             @if(!empty($quote->loading_dock_instructions))
-                                            <p>
-                                              <b>Loading Dock Instructions</b>: {{$quote->loading_dock_instructions}}
-                                            </p>
-                                          @endif
+                                              <p>
+                                                <b>Loading Dock Instructions</b>: {{$quote->loading_dock_instructions}}
+                                              </p>
+                                            @endif
 
                                             <p>
                                               <b>Message</b>: {{$quote->message}}
+                                            </p>
+                                            <p>
+                                              @php
+                                                $productUrl = array_get($quote->seo_metrics, 'product_url');
+                                              @endphp
+
+                                              @if($productUrl)
+                                                <b>Product URL</b>:
+                                                <a href="{{ $productUrl }}" target="_blank">
+                                                  {{ $productUrl }}
+                                                </a>
+                                              @endif
                                             </p>
                                             <p>
                                               <b>How would you like to proceed further?</b>: 

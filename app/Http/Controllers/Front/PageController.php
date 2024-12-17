@@ -480,14 +480,6 @@ class PageController extends Controller
             // 'request_type' => 'required',
         ]);
 
-        $seoMetrics = array_merge(
-            session('metrics', []), 
-            Helper::fetchUserLocation($request->ip())
-        );
-
-        $leadType = count($seoMetrics) ? MetricsHelper::formatLabel($seoMetrics, true) : [];
-
-
         if($quote = Quote::create(
     array_merge(
                     $request->only(
@@ -513,12 +505,7 @@ class PageController extends Controller
                         'loading_dock_instructions'
                     ),
                     [
-                        // 'seo_metrics' => array_merge(
-                        //     session('metrics', []), 
-                        //     Helper::fetchUserLocation($request->ip())
-                        // )
-                        'seo_metrics' => $seoMetrics + ['lead_type' => $leadType]
-
+                        "seo_metrics" => MetricsHelper::mergeMetrics($request->ip())
                     ]
                 )
             )
