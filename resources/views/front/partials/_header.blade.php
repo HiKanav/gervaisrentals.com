@@ -242,7 +242,7 @@
     </div>
     <div class="services-features text-center container" style="display: flex; justify-content:space-between">
         <div>
-            <h3 style="font-size:20px;"><a href="{{ asset('imgs/Complete-Brochure-22112024.pdf') }}">Download our Brochure</a></h3>
+            <h3 style="font-size:20px;"><a href="{{ asset('imgs/complete-brochure-20122024.pdf') }}">Download our Brochure</a></h3>
         </div>
 
         <div class="col-lg-4 pull-right" style="margin-top: 16px; width:50%;">
